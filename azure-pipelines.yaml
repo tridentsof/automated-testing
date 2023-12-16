@@ -15,7 +15,8 @@ variables:
   # Project root folder. Point to the folder containing manage.py file.
   projectRoot: $(System.DefaultWorkingDirectory)
   # Environment name
-  environmentName: 'test'
+  environmentName: 'trident-test-env'
+  vmBuildName: 'vm-linux-build'
 
 stages:
 #--------------------------------------------#  
@@ -51,23 +52,6 @@ stages:
       inputs:
         provider: 'azurerm'
         command: 'validate'
-
-    # OPTIONAL - This step is needed only if your Terraform VM uses an SSH key pair for login and you want your pipeline agent to connect to it. 
-    # Generate an SSH key pair in your local/AZ Cloud shell. Use the public key in the Terraform VM module. 
-    # Install public key and private key file to the pipeline agent, using the task below. 
-    # ToDo: Change the inputs value below
-    # - task: InstallSSHKey@0
-    #   inputs:
-    #     knownHostsEntry: 'KNOWN_HOSTS_STRING' # variable value
-    #     sshPublicKey: 'PUBLIC_KEY'            # variable value
-    #     sshKeySecureFile: 'id_rsa' # Use secure file feature in the pipeline library UI to save the "id_rsa" file, as mentioned here: https://learn.microsoft.com/en-us/azure/devops/pipelines/library/secure-files?view=azure-devops#add-a-secure-file
-    
-    # - task: DownloadSecureFile@1
-    #  name: udacity_public_key
-    #  displayName: 
-    #  inputs:
-    #   secureFile: 
-
     
     # Run Terraform Apply
     - task: ms-devlabs.custom-terraform-tasks.custom-terraform-release-task.TerraformTaskV3@3
@@ -78,60 +62,27 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/environments/test'
         environmentServiceNameAzureRM: '$(azureServiceConnectionId)'
 
-
-#--------------------------------------------#    
-    # Postman - Install Newman    
-    # ToDo: Update the command and verify the working directory
-    - task: CmdLine@2
-      displayName: Install Newman
-      inputs:
-        script: 'sudo npm install -g newman'
-        workingDirectory: $(System.DefaultWorkingDirectory)
-    # Postman Data Validation Test Suite    
-    # ToDo: Verify the working directory
-    - task: CmdLine@2
-      displayName: Run Data Validation Tests
-      continueOnError: true
-      inputs:
-        script: 'newman run TestSuite.Data-Validation.json -e Test.environment.json --reporters cli,junit --reporter-junit-export TEST-DataValidation.xml'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/automatedtesting/postman'
-    # Postman Regression Test Suite    
-    # ToDo: Verify the working directory
-    - task: CmdLine@2
-      displayName: Run Regression Tests
-      continueOnError: true
-      inputs:
-        script: 'newman run TestSuite.Regression.json -e Test.environment.json --reporters cli,junit --reporter-junit-export TEST-Regression.xml'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/automatedtesting/postman'
-    # Postman - Publish Results 
-    # ToDo: Complete the task as explained here: https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/test/publish-test-results?view=azure-devops&tabs=trx%2Cyaml#yaml-snippet
-    - task: PublishTestResults@2
-      inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '**/TEST-*.xml'
-        searchFolder: '$(System.DefaultWorkingDirectory)/automatedtesting/postman'
-        mergeTestResults: true
-        testRunTitle: 'PostmanReportTest'
-
-    #--------------------------------------------#
-    # Selenium (UI) Test Suite - Archive the package  
     # "ArchiveFiles@2" picks up the web package and archives it.
+    # Selenium (UI) Test Suite - Archive the package  
     - task: ArchiveFiles@2
-      displayName: 'Archive UI Tests'
+      displayName: 'Archive Selinum UI Tests package'
       inputs:
         rootFolderOrFile: '$(System.DefaultWorkingDirectory)/automatedtesting/selenium'
         includeRootFolder: false
         archiveType: 'zip'
-        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-uitests.zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-selenium.zip'
+        replaceExistingArchive: true
     # Selenium Test Suite - Publish the package  
-    - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-uitests.zip   # Same as the archiveFile artifact above. 
-      displayName: 'Upload Package'
-      artifact: drop-uitests
+    - task: PublishPipelineArtifact@1
+      displayName: "Upload Selenium package"
+      inputs:
+        targetPath: "$(Build.BuildId)-selenium.zip"
+        artifact: "trident-selenium"
 
     #--------------------------------------------#    
-    # FakeRestAPI - Archive
+    # FakeRestAPI - Archive the package  
     - task: ArchiveFiles@2
-      displayName: 'Archive FakeRestAPI'
+      displayName: 'Archive FakeRestAPI package`'
       inputs:
         rootFolderOrFile: "$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/fakerestapi"
         includeRootFolder: false
@@ -144,31 +95,17 @@ stages:
         targetPath: "$(Build.BuildId)-fakerestapi.zip"
         artifact: "trident-fakerestapi"
 
-    #--------------------------------------------#  
-    # JMeter (Performance) Test Suite - Archive
-    - task: ArchiveFiles@2
-      displayName: 'Archive PerformanceTestSuite'
-      inputs:
-        rootFolderOrFile: "$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/test-suite/report-html"
-        includeRootFolder: false
-        archiveType: 'zip'
-        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-perftests.zip'
-    # JMeter Test Suite - Publish    
-    - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-perftests.zip
-      displayName: 'Upload Package PerformanceTestSuite'
-      artifact: trident-drop-perftests
-
 #--------------------------------------------#  
 # DEPLOYMENT STAGE
 #--------------------------------------------#    
-- stage: Deploy
+- stage: DeployWebApp
+
   jobs:
-  #--------------------------------------------#  
-  # Deploy FakeRestAPI Web App
   - deployment: FakeRestAPI
+  
     pool:
-      vmImage: 'Ubuntu-18.04'      
-    environment: 'trident-test-env'
+      name: 'Ubuntu-18.04'      
+    environment: $(environmentName)
     strategy:
       runOnce:
         deploy:
@@ -180,61 +117,140 @@ stages:
               appName: 'automated-testing-AppService'
               appType: webApp
               package: $(Pipeline.Workspace)/trident-fakerestapi/$(Build.BuildId)-fakerestapi.zip       # ToDo: Use the published zip artifact. 
-          #--------------------------------------------#    
-          # Run JMeter test suite against the App Service
-          - task: CmdLine@2
-            inputs:
-              script: |
-                wget "https://apache.mirrors.lucidnetworks.net//jmeter/binaries/apache-jmeter-5.2.1.tgz"
-                tar -xf apache-jmeter-5.2.1.tgz
-                unzip -o $(Build.BuildId)-perftests.zip
-                ./apache-jmeter-5.2.1/bin/jmeter -n -t PerformanceTestSuite.jmx -j jmeter.log -f
-                cat jmeter.log                                                                           # ToDo: Write your commands
-              workingDirectory: $(Pipeline.Workspace)/<artifact>            # ToDo: Use the artifact name from the task above
-              
-  #--------------------------------------------#  
-  # Selenium | Functional UI Tests
-  # ToDo: 
-  - deployment: VMDeploy
-    displayName: Selenium Tests
-    environment:
-      name: 'trident-test-env'
-      resourceType: VirtualMachine
-      tags: selenium
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - download: current
-            artifact: trident-drop-ui-tests
-            
-          - task: Bash@3
-            inputs:
-              targetType: 'inline'
-              script: |           
-                #! /bin/bash
-                
-                sudo apt-get upgrade -y
-                sudo apt-get install python3-pip -y
-                sudo apt-get install unzip -y
-                sudo apt-get install -y chromium-browser
-                pip3 install selenium
-                cd ~/
-                DIR=/home/testuser/app
-                if [ ! -d "$DIR" ]; then
-                    mkdir app
-                fi
-                mv /home/testuser/azagent/_work/1/drop-uitests/$(Build.BuildId)-uitests.zip app
-                cd app
-                unzip -o $(Build.BuildId)-uitests.zip
-                FILE=/home/testuser/app/chromedriver_linux64.zip
-                if [ ! -f "$FILE" ]; then
-                    LATEST=$(wget -q -O - http://chromedriver.storage.googleapis.com/LATEST_RELEASE)
-                    wget http://chromedriver.storage.googleapis.com/$LATEST/chromedriver_linux64.zip
+
+- stage: Testing
+  dependsOn: DeployWebApp
+  condition: succeeded()
+  jobs:
+    - job: TestPostman
+      pool:
+        name: '$(vmBuildName)'
+      steps:
+      - task: NodeTool@0
+        inputs:
+          versionSource: 'spec'
+          versionSpec: '16.x'
+      - task: CmdLine@2
+        displayName: Install Newman
+        inputs:
+          script: 'npm install newman -g'
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+      # Postman Data Validation Test Suite
+      - task: CmdLine@2
+        displayName: Run Data Validation Tests
+        continueOnError: true
+        inputs:
+          script: 'newman run Validation.postman_collection.json -e trident-env.postman_environment.json --reporters cli,junit --reporter-junit-export TEST-DataValidation.xml'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/automatedtesting/postman'
+      # Postman Regression Test Suite
+      - task: CmdLine@2
+        displayName: Run Regression Tests
+        continueOnError: true
+        inputs:
+          script: 'newman run Regression.postman_collection.json -e trident-env.postman_environment.json --reporters cli,junit --reporter-junit-export TEST-Regression.xml'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/automatedtesting/postman'
+      # Postman - Publish Results 
+      - task: PublishTestResults@2
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '**/TEST-*.xml'
+          searchFolder: '$(System.DefaultWorkingDirectory)/automatedtesting/postman'
+          mergeTestResults: true
+          testRunTitle: 'ReportTestWithPostman'
+    - job: JMeterTest
+      displayName: Performance testing by JMeter
+      pool:
+        name: '$(vmBuildName)'
+      steps:
+        - script: |
+            wget https://downloads.apache.org/jmeter/binaries/apache-jmeter-5.6.2.tgz
+            tar -xzvf apache-jmeter-5.6.2.tgz
+          workingDirectory: "$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/test-suite"
+          displayName: "Install JMeter"
+        - script: |
+            mkdir -p html-report/stress-test
+            apache-jmeter-5.6.2/bin/jmeter -n -t Trident-StressTest.jmx -l simple-result-stress-test.csv -e -o html-report/stress-test
+          workingDirectory: "$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/test-suite"
+          displayName: "Execute JMeter Test Stress Test"
+
+        - script: |
+            mkdir -p html-report/endurance-test
+            apache-jmeter-5.6.2/bin/jmeter -n -t Trident-EnduranceTest.jmx -l simple-result-endurance-test.csv -e -o html-report/endurance-test
+          workingDirectory: "$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/test-suite"
+          displayName: "Execute JMeter Test Endurance Test"
+
+        - task: ArchiveFiles@2
+          displayName: "Archive PerformanceTestSuite"
+          inputs:
+            rootFolderOrFile: "$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/test-suite/html-report"
+            includeRootFolder: false
+            archiveType: "zip"
+            archiveFile: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-perftests.zip"
+        # JMeter Test Suite - Publish
+        - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-perftests.zip
+          displayName: "Upload Performance Test Result"
+          artifact: trident-perftests
+    - deployment: TestOnVM
+      dependsOn: JMeterTest
+      condition: succeeded()
+      displayName: UI Testing By Selenium
+      environment:
+        name: '$(environmentName)'
+        resourceType: VirtualMachine
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: Bash@3
+                inputs:
+                  targetType: inline
+                  script: |
+                    #!/bin/bash
+                    sudo add-apt-repository universe
+                    sudo apt-get update
+                    sudo apt-get upgrade -y
+                    sudo apt-get install python3-pip -y
+                    sudo apt-get install unzip -y
+                    sudo snap remove chromium
+                    sudo apt-get install -y chromium-browser
+                    pip3 install selenium
+
+                    # download chrome driver
+                    FILE=chromedriver_linux64.zip
+                    if [ -f "$FILE" ]; then
+                      echo "$FILE exists."
+                    else
+                      wget https://chromedriver.storage.googleapis.com/112.0.5615.28/chromedriver_linux64.zip
+                    fi
+                    echo "Place"
+                    pwd
+                    echo "list out"
+                    ls
+                    # install chrome driver
                     unzip -o chromedriver_linux64.zip
-                    sudo ln -s $PWD/chromedriver /usr/local/bin/chromedriver
-                fi
-                export PATH=$PATH:/home/testuser/app
-                echo "Starting Selenium Tests"
-                python3 add_remove_from_cart.py >> selenium.log
-                echo "Completed Selenium Tests. Check selenium.log for results."
+                    sudo mkdir -p /usr/bin/chromedriver
+                    sudo mv chromedriver /usr/bin/chromedriver
+                    sudo chown root:root /usr/bin/chromedriver
+                    sudo chmod +x /usr/bin/chromedriver
+                    export PATH=$PATH:/usr/bin/chromedriver
+                    chromium-browser -version
+                    echo "chrome driver"
+                    chromedriver --version
+
+                    cd $(Pipeline.Workspace)/trident-selenium
+                    unzip -o $(Build.BuildId)-selenium.zip
+                    sudo mkdir -p /var/log/selenium
+                    sudo chmod 664 /var/log/selenium
+                    python3 login.py > ui-logs.log
+                    python3 login.py
+                    sudo mv ui-logs.log /var/log/selenium
+                    cd $(System.DefaultWorkingDirectory)
+                    mkdir -p log/selenium
+                    sudo cp /var/log/selenium/ui-logs.log log/selenium
+                displayName: "Execute UI Test Suite"
+              # JMeter Test Suite - Publish
+              - task: PublishPipelineArtifact@1
+                displayName: 'Upload Selenium Result'
+                inputs:
+                  targetPath: '$(System.DefaultWorkingDirectory)/log/selenium/ui-logs.log'
+                  artifact: 'trident-selenium-report'
