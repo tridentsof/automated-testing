@@ -13,7 +13,7 @@ pool: vm-linux-build
 variables:
   python.version: '3.7.17'
   # ToDo: Replace the service connection name as used in the DevOps project settings
-  azureServiceConnectionId: 'Udacity Serviceß'
+  azureServiceConnectionId: 'Udacity Service'
   # Project root folder. Point to the folder containing manage.py file.
   projectRoot: $(System.DefaultWorkingDirectory)
   # Environment name
