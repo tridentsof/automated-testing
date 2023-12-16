@@ -13,7 +13,7 @@ pool: vm-linux-build
 variables:
   python.version: '3.7.17'
   # ToDo: Replace the service connection name as used in the DevOps project settings
-  azureServiceConnectionId: 'myServiceConnection'
+  azureServiceConnectionId: 'Udacity Serviceß'
   # Project root folder. Point to the folder containing manage.py file.
   projectRoot: $(System.DefaultWorkingDirectory)
   # Environment name
@@ -44,10 +44,10 @@ stages:
         command: 'init'
         workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/environments/test'
         backendServiceArm: '$(azureServiceConnectionId)'
-        backendAzureRmResourceGroupName: ''
-        backendAzureRmStorageAccountName: ''
-        backendAzureRmContainerName: ''
-        backendAzureRmKey: 'test.terraform.tfstate'
+        backendAzureRmResourceGroupName: 'rg-udacity-shared'
+        backendAzureRmStorageAccountName: 'stinfraudacity'
+        backendAzureRmContainerName: 'terraform'
+        backendAzureRmKey: 'test.tfstate'
 
     - task: ms-devlabs.custom-terraform-tasks.custom-terraform-release-task.TerraformTaskV3@3
       displayName: Terraform validate
