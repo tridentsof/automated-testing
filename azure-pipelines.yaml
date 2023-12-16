@@ -70,7 +70,7 @@ stages:
         rootFolderOrFile: '$(System.DefaultWorkingDirectory)/automatedtesting/selenium'
         includeRootFolder: false
         archiveType: 'zip'
-        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-selenium.zip'
+        archiveFile: '$(Build.BuildId)-selenium.zip'
         replaceExistingArchive: true
     # Selenium Test Suite - Publish the package  
     - task: PublishPipelineArtifact@1
