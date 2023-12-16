@@ -7,10 +7,10 @@ provider "azurerm" {
 }
 terraform {
   backend "azurerm" {
-    storage_account_name = ""
-    container_name       = ""
-    key                  = ""
-    access_key           = ""
+    resource_group_name  = "rg-udacity-shared"
+    storage_account_name = "stinfraudacity"
+    container_name       = "terraform"
+    key                  = "test.tfstate"
   }
 }
 module "resource_group" {
@@ -51,4 +51,16 @@ module "publicip" {
   application_type = "${var.application_type}"
   resource_type    = "publicip"
   resource_group   = "${module.resource_group.resource_group_name}"
+}
+
+module "vm_linux" {
+  source               = "../../modules/vm"
+  location             = var.location
+  application_type     = var.application_type
+  resource_type        = "vm"
+  resource_group       = module.resource_group.resource_group_name
+  subnet_id            = module.network.subnet_id_test
+  pip-id = module.publicip.public_ip_address_id
+  admin_username       = var.admin_username
+  rsa_keygen           = var.rsa_keygen
 }
