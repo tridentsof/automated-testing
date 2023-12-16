@@ -140,14 +140,14 @@ stages:
         displayName: Run Data Validation Tests
         continueOnError: true
         inputs:
-          script: 'newman run Validation.postman_collection.json -e trident-env.postman_environment.json --reporters cli,junit --reporter-junit-export TEST-DataValidation.xml'
+          script: 'newman run ValidationTest.postman_collection.json -e trident-env.postman_environment.json --reporters cli,junit --reporter-junit-export TEST-DataValidation.xml'
           workingDirectory: '$(System.DefaultWorkingDirectory)/automatedtesting/postman'
       # Postman Regression Test Suite
       - task: CmdLine@2
         displayName: Run Regression Tests
         continueOnError: true
         inputs:
-          script: 'newman run Regression.postman_collection.json -e trident-env.postman_environment.json --reporters cli,junit --reporter-junit-export TEST-Regression.xml'
+          script: 'newman run RegressionTest.postman_collection.json -e trident-env.postman_environment.json --reporters cli,junit --reporter-junit-export TEST-Regression.xml'
           workingDirectory: '$(System.DefaultWorkingDirectory)/automatedtesting/postman'
       # Postman - Publish Results 
       - task: PublishTestResults@2
