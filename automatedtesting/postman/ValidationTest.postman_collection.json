@@ -1,0 +1,181 @@
+{
+	"info": {
+		"_postman_id": "582a57c4-6400-4bdd-a501-acfe3cf9d59b",
+		"name": "Validation",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get all books",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Create book\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/{{path}}",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"{{path}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get book by ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Create book\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/{{path}}/{{id}}",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"{{path}}",
+						"{{id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Create book\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "  {\r\n    \"ID\": {{$randomInt}},\r\n    \"Title\": {{title}},\r\n    \"Description\": {{description}},\r\n    \"PageCount\": {{$randomInt}},\r\n    \"Excerpt\": {{excerpt}},\r\n    \"PublishDate\": {{publishDate}}\r\n  }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/{{path}}",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"{{path}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Create book\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "  {\r\n    \"ID\": {{id}},\r\n    \"Title\": {{title}},\r\n    \"Description\": {{description}},\r\n    \"PageCount\": {{$randomInt}},\r\n    \"Excerpt\": {{excerpt}},\r\n    \"PublishDate\": {{publishDate}}\r\n  }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/{{path}}/{{id}}",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"{{path}}",
+						"{{id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Delete book\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/{{path}}/{{delete_id}}",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"{{path}}",
+						"{{delete_id}}"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
