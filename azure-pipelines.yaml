@@ -6,13 +6,11 @@ name: Azure Pipelines
 trigger:
 - main
 
-# ToDo: Replace the agent pool name, if you are using Udacity Cloud lab. 
 # Otherwise, comment out the line below. 
 pool: vm-linux-build
 
 variables:
   python.version: '3.7.17'
-  # ToDo: Replace the service connection name as used in the DevOps project settings
   azureServiceConnectionId: 'Udacity Service'
   # Project root folder. Point to the folder containing manage.py file.
   projectRoot: $(System.DefaultWorkingDirectory)
@@ -36,7 +34,6 @@ stages:
         terraformVersion: '1.2.9'
     
     # Run Terraform Init on the pipeline agent 
-    # ToDo: Replace the resource group name, storage account name, and container name below
     - task: ms-devlabs.custom-terraform-tasks.custom-terraform-release-task.TerraformTaskV3@3
       displayName: 'Terrafom init'
       inputs:
@@ -81,15 +78,6 @@ stages:
         workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/environments/test'
         environmentServiceNameAzureRM: '$(azureServiceConnectionId)'
 
-    # ToDo: Change the workingDirectory path, as applicable to you
-    # Destroy the resources in Azure by running a separate pipeline. 
-    # - task: TerraformTaskV3@3
-    #   displayName: Terraform destroy
-    #   inputs:
-    #     provider: 'azurerm'
-    #     command: 'destroy'
-    #     workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/environments/test'
-    #     environmentServiceNameAzureRM: '$(azureServiceConnectionId)'
 
 #--------------------------------------------#    
     # Postman - Install Newman    
@@ -121,9 +109,9 @@ stages:
       inputs:
         testResultsFormat: 'JUnit'
         testResultsFiles: '**/TEST-*.xml'
-        searchFolder:       # ToDo
+        searchFolder: '$(System.DefaultWorkingDirectory)/automatedtesting/postman'
         mergeTestResults: true
-        testRunTitle:       # ToDo
+        testRunTitle: 'PostmanReportTest'
 
     #--------------------------------------------#
     # Selenium (UI) Test Suite - Archive the package  
@@ -142,32 +130,33 @@ stages:
 
     #--------------------------------------------#    
     # FakeRestAPI - Archive
-    # ToDo: Complete the ArchiveFiles@2 task and publish step 
     - task: ArchiveFiles@2
       displayName: 'Archive FakeRestAPI'
       inputs:
-        rootFolderOrFile: 
+        rootFolderOrFile: "$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/fakerestapi"
         includeRootFolder: false
         archiveType: 'zip'
         archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-fakerestapi.zip'
-    - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-fakerestapi.zip
-      displayName: 'Upload Package'
-      artifact: drop-fakerestapi
+    
+    - task: PublishPipelineArtifact@1
+      displayName: "Upload Fake RestAPI"
+      inputs:
+        targetPath: "$(Build.BuildId)-fakerestapi.zip"
+        artifact: "trident-fakerestapi"
 
     #--------------------------------------------#  
     # JMeter (Performance) Test Suite - Archive
-    # ToDo: Complete the ArchiveFiles@2 task and publish step 
     - task: ArchiveFiles@2
       displayName: 'Archive PerformanceTestSuite'
       inputs:
-        rootFolderOrFile: 
+        rootFolderOrFile: "$(System.DefaultWorkingDirectory)/automatedtesting/jmeter/test-suite/report-html"
         includeRootFolder: false
         archiveType: 'zip'
         archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId)-perftests.zip'
     # JMeter Test Suite - Publish    
     - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-perftests.zip
-      displayName: 'Upload Package'
-      artifact: drop-perftests
+      displayName: 'Upload Package PerformanceTestSuite'
+      artifact: trident-drop-perftests
 
 #--------------------------------------------#  
 # DEPLOYMENT STAGE
@@ -176,11 +165,10 @@ stages:
   jobs:
   #--------------------------------------------#  
   # Deploy FakeRestAPI Web App
-  # ToDo: Provide <environment name> you created in your DevOps project
   - deployment: FakeRestAPI
     pool:
       vmImage: 'Ubuntu-18.04'      
-    environment: <environment name>   # ToDo
+    environment: 'trident-test-env'
     strategy:
       runOnce:
         deploy:
@@ -188,10 +176,10 @@ stages:
           - task: AzureWebApp@1
             displayName: 'Deploy Azure Web App'
             inputs:
-              azureSubscription: ''     # ToDo
-              appName: ''               # ToDo
+              azureSubscription: 'd381139d-0fa2-4a19-a4a0-0df928a317be'
+              appName: 'automated-testing-AppService'
               appType: webApp
-              package: $(Pipeline.Workspace)/<artifact>/<archiveFile>       # ToDo: Use the published zip artifact. 
+              package: $(Pipeline.Workspace)/trident-fakerestapi/$(Build.BuildId)-fakerestapi.zip       # ToDo: Use the published zip artifact. 
           #--------------------------------------------#    
           # Run JMeter test suite against the App Service
           - task: CmdLine@2
@@ -210,7 +198,7 @@ stages:
   - deployment: VMDeploy
     displayName: Selenium Tests
     environment:
-      name:         # ToDo: Change/provide a name
+      name: 'trident-test-env'
       resourceType: VirtualMachine
       tags: selenium
     strategy:
@@ -218,7 +206,7 @@ stages:
         deploy:
           steps:
           - download: current
-            artifact: drop-ui-tests     # ToDo: Change/provide a name
+            artifact: trident-drop-ui-tests
             
           - task: Bash@3
             inputs:
