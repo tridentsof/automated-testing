@@ -228,7 +228,7 @@
         <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="BookIds Data CSV" enabled="true">
           <stringProp name="delimiter">,</stringProp>
           <stringProp name="fileEncoding">UTF-8</stringProp>
-          <stringProp name="filename">./bookIds.csv</stringProp>
+          <stringProp name="filename">./bookids.csv</stringProp>
           <boolProp name="ignoreFirstLine">false</boolProp>
           <boolProp name="quotedData">false</boolProp>
           <boolProp name="recycle">true</boolProp>
